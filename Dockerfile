@@ -12,8 +12,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY streamlit_app.py .
-COPY ufc_model_package.pkl .
-COPY ufc-master.csv .
+COPY ufc_model.joblib .
+COPY UFC.csv .
 COPY .streamlit/ .streamlit/
 
 EXPOSE 8501

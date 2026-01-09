@@ -3,11 +3,12 @@ Shared utility functions for UFC Fight Predictor
 """
 import streamlit as st
 import pandas as pd
-import pickle
 import numpy as np
+import joblib
 from collections import defaultdict
+import sys
 
-# Elo System Class (must match training notebook)
+# Elo System Class
 class EloSystem:
     """Elo ratings + win/loss streak tracking."""
     
@@ -40,20 +41,20 @@ class EloSystem:
         """Get top n fighters by Elo rating."""
         return sorted(self.ratings.items(), key=lambda x: x[1], reverse=True)[:n]
 
+sys.modules['__main__'].EloSystem = EloSystem
+
 # Load model with caching
 @st.cache_resource
 def load_model():
-    """Load the trained model pickle."""
+    """Load the trained model."""
+    import joblib
+
     try:
-        # Fix for pickle: EloSystem must be in __main__ namespace
-        import __main__
-        __main__.EloSystem = EloSystem
-        
-        with open('ufc_model.pkl', 'rb') as f:
-            return pickle.load(f)
+        return joblib.load("ufc_model.joblib")
     except FileNotFoundError:
-        st.error("❌ Model file not found! Make sure 'ufc_model.pkl' is in the same directory.")
+        st.error("Model file not found. Make sure 'ufc_model.joblib' is in the app directory.")
         return None
+
 
 @st.cache_data
 def load_data():
@@ -63,7 +64,7 @@ def load_data():
         df['date'] = pd.to_datetime(df['date'])
         return df
     except FileNotFoundError:
-        st.error("❌ Data file not found! Make sure 'UFC.csv' is in the same directory.")
+        st.error("Data file not found! Make sure 'UFC.csv' is in the same directory.")
         return None
 
 def parse_height(h):

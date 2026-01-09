@@ -5,30 +5,43 @@ import seaborn as sns
 from utils import load_model, load_data
 
 # Page config
-st.set_page_config(page_title="Model Performance", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Model Performance", layout="wide")
 
 st.title("Model Performance & Information")
 
-# Load data
 model_pkg = load_model()
 df = load_data()
 
 if model_pkg is None or df is None:
     st.stop()
 
-# Model Overview
+# Overview
 st.markdown("### Model Overview")
 
+m = model_pkg.get("metrics")
+
+# First row
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric("Model Type", "Calibrated Random Forest")
 with col2:
-    st.metric("Features", len(model_pkg['features']))
+    st.metric("Features", len(model_pkg["features"]))
 with col3:
     st.metric("Total Fights", len(df))
 
+# Second row
+col4, col5, col6 = st.columns(3)
+
+with col4:
+    st.metric("Accuracy", f"{m['acc']:.3f}" if m else "—")
+with col5:
+    st.metric("ROC AUC", f"{m['auc']:.3f}" if m else "—")
+with col6:
+    st.metric("Brier", f"{m['brier']:.3f}" if m else "—")
+
 st.markdown("---")
+
 
 # Feature List
 st.markdown("### Features Used (20 Total)")
