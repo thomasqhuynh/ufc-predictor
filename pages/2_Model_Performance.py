@@ -115,6 +115,24 @@ if hasattr(base_model, 'feature_importances_'):
 
 st.markdown("---")
 
+# SHAP Explainability
+st.markdown("### Prediction Explainability (SHAP)")
+
+st.markdown("""
+**What is SHAP?**
+
+SHAP (SHapley Additive exPlanations) is used in the Fight Predictor to explain why the model makes each prediction.
+
+**What you'll see:**
+- **Top 3 Key Advantages:** The most impactful factors for the predicted winner
+- **Detailed Breakdown:** Advantages organized by category (Rankings, Striking, Grappling, Physical)
+
+This helps you understand why they're expected to win based on specific matchup advantages.
+
+""")
+
+st.markdown("---")
+
 # Model Training Details
 st.markdown("### Model Training Details")
 

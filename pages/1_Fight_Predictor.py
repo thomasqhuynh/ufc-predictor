@@ -191,10 +191,10 @@ if st.button("Predict Fight Outcome", type="primary"):
                             'sapm_diff': 'Strikes Absorbed',
                             'str_acc_diff': 'Strike Accuracy',
                             'str_def_diff': 'Strike Defense',
-                            'td_avg_diff': 'Takedown Ability',
+                            'td_avg_diff': 'Takedown Average',
                             'td_acc_diff': 'Takedown Accuracy',
                             'td_def_diff': 'Takedown Defense',
-                            'sub_avg_diff': 'Submission Game',
+                            'sub_avg_diff': 'Submission Average',
                             'strike_diff_diff': 'Strike Differential',
                             'physical_adv': 'Physical Advantages',
                             'exp_ratio': 'Experience'
