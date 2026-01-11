@@ -11,6 +11,7 @@ pages = [
     st.Page("pages/1_Fight_Predictor.py", title="Fight Predictor"),
     st.Page("pages/2_Model_Performance.py", title="Model Performance"),
     st.Page("pages/3_Fighter_Database.py", title="Fighter Database"),
+    st.Page("pages/4_P4P_Predictor.py", title="P4P Predictor"),
 ]
 
 pg = st.navigation(pages)

@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import shap
+import matplotlib.pyplot as plt
 from utils import (
     load_model, load_data, get_all_fighters, 
     get_fighter_stats, create_prediction_features
@@ -77,7 +79,30 @@ def predict_fight(fighter1, fighter2, model_pkg, df):
         'fighter2_stats': f2_stats,
         'fighter1_streak': f"W{ws1}" if ws1 > 0 else f"L{ls1}" if ls1 > 0 else "-",
         'fighter2_streak': f"W{ws2}" if ws2 > 0 else f"L{ls2}" if ls2 > 0 else "-",
+        'X_scaled': X_scaled,
+        'features': features
     }
+
+def calculate_shap_values(model_pkg, X_scaled):
+    """Calculate SHAP values for feature importance."""
+    try:
+        model = model_pkg['model']
+        
+        if hasattr(model, 'calibrated_classifiers_'):
+            base_model = model.calibrated_classifiers_[0].estimator
+        else:
+            base_model = model
+        
+        explainer = shap.TreeExplainer(base_model)
+        shap_values = explainer.shap_values(X_scaled)
+        
+        if isinstance(shap_values, list):
+            shap_values = shap_values[1]
+        
+        return explainer, shap_values
+    except Exception as e:
+        st.error(f"Could not calculate SHAP values: {e}")
+        return None, None
 
 st.markdown('<h1 style="text-align: center; color: #D20A0A;">UFC Fight Predictor</h1>', unsafe_allow_html=True)
 st.markdown("---")
@@ -98,12 +123,10 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Fighter 1")
     fighter1 = st.selectbox("Select Fighter", all_fighters, key="f1")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
     st.subheader("Fighter 2")
     fighter2 = st.selectbox("Select Fighter", all_fighters, key="f2")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # Predict button
@@ -123,7 +146,7 @@ if st.button("Predict Fight Outcome", type="primary"):
             winner_col1, winner_col2, winner_col3 = st.columns([1, 2, 1])
             with winner_col2:
                 st.markdown(f"""
-                <div style='text-align: center; padding: 2rem; background: #2e3440;; 
+                <div style='text-align: center; padding: 2rem; background: #2e3440; 
                             border-radius: 15px; color: white;'>
                     <h2 style='margin: 0;'>Predicted Winner</h2>
                     <h1 style='font-size: 3rem; margin: 1rem 0;'>{result['predicted_winner']}</h1>
@@ -133,6 +156,84 @@ if st.button("Predict Fight Outcome", type="primary"):
             
             st.markdown("---")
             
+            # SHAP Feature Importance
+            with st.spinner("Calculating feature importance..."):
+                explainer, shap_values = calculate_shap_values(model_pkg, result['X_scaled'])
+                
+                if explainer is not None and shap_values is not None:
+                    try:
+                        num_features = len(result['X_scaled'].columns)
+                        
+                        if len(shap_values.flatten()) == num_features * 2:
+                            shap_vals = shap_values.flatten()[num_features:] 
+                        else:
+                            shap_vals = shap_values.flatten()
+                        
+                        feature_importance = pd.DataFrame({
+                            'Feature': result['X_scaled'].columns,
+                            'Impact': shap_vals
+                        })
+                        
+                        feature_importance['Abs_Impact'] = feature_importance['Impact'].abs()
+                        feature_importance = feature_importance.sort_values('Abs_Impact', ascending=False)
+                        
+                        feature_names = {
+                            'elo_diff': 'Fighter Ranking (Elo)',
+                            'height_diff': 'Height Advantage',
+                            'reach_diff': 'Reach Advantage',
+                            'age_diff': 'Age/Prime',
+                            'win_pct_diff': 'Win Percentage',
+                            'win_streak_diff': 'Current Momentum',
+                            'loss_streak_diff': 'Loss Streak',
+                            'wins_diff': 'Total Wins',
+                            'losses_diff': 'Total Losses',
+                            'slpm_diff': 'Striking Volume',
+                            'sapm_diff': 'Strikes Absorbed',
+                            'str_acc_diff': 'Strike Accuracy',
+                            'str_def_diff': 'Strike Defense',
+                            'td_avg_diff': 'Takedown Ability',
+                            'td_acc_diff': 'Takedown Accuracy',
+                            'td_def_diff': 'Takedown Defense',
+                            'sub_avg_diff': 'Submission Game',
+                            'strike_diff_diff': 'Strike Differential',
+                            'physical_adv': 'Physical Advantages',
+                            'exp_ratio': 'Experience'
+                        }
+                        
+                        categories = {
+                            'Rankings & Momentum': ['elo_diff', 'win_pct_diff', 'win_streak_diff', 'loss_streak_diff', 'exp_ratio', 'wins_diff', 'losses_diff'],
+                            'Striking': ['slpm_diff', 'sapm_diff', 'str_acc_diff', 'str_def_diff', 'strike_diff_diff'],
+                            'Grappling': ['td_avg_diff', 'td_acc_diff', 'td_def_diff', 'sub_avg_diff'],
+                            'Physical Attributes': ['height_diff', 'reach_diff', 'physical_adv', 'age_diff']
+                        }
+                        
+                        top_factors = feature_importance[feature_importance['Impact'] > 0].head(8)
+                        
+                        if not top_factors.empty:
+                            st.markdown("### Winning Factors")
+                            st.markdown(f"**Top 3 Key Advantages for {result['predicted_winner']}:**")
+                            
+                            for idx, row in top_factors.head(3).iterrows():
+                                feature_display = feature_names.get(row['Feature'], row['Feature'])
+                                st.write(f"• {feature_display}")
+                            
+                            st.markdown("---")
+                            st.markdown("**Detailed Breakdown of Advantages:**")
+                            
+                            for category, features in categories.items():
+                                category_factors = top_factors[top_factors['Feature'].isin(features)]
+                                if not category_factors.empty:
+                                    st.markdown(f"#### {category}")
+                                    for idx, row in category_factors.iterrows():
+                                        feature_display = feature_names.get(row['Feature'], row['Feature'])
+                                        st.write(f"  • {feature_display}")
+                        else:
+                            st.info("This is a very close matchup with no clear advantages.")
+                    
+                    except Exception as e:
+                        st.error(f"Could not analyze winning factors: {e}")
+            
+            st.markdown("---")
             
             # Elo ratings and streaks
             st.markdown("### Elo Ratings & Streaks")
